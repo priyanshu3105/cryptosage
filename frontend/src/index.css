@@ -1,0 +1,222 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --neon-cyan: 188 78% 38%;
+    --neon-blue: 195 85% 40%;
+    --neon-line: 188 70% 45%;
+
+    --background: 220 22% 97%;
+    --foreground: 222 28% 14%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 222 28% 14%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 28% 14%;
+
+    --primary: 188 78% 38%;
+    --primary-foreground: 210 40% 98%;
+
+    --secondary: 220 18% 93%;
+    --secondary-foreground: 222 22% 22%;
+
+    --muted: 220 16% 94%;
+    --muted-foreground: 220 12% 42%;
+
+    --accent: 188 45% 94%;
+    --accent-foreground: 188 70% 28%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+
+    --success: 155 55% 36%;
+    --success-foreground: 0 0% 100%;
+
+    --warning: 38 92% 48%;
+    --warning-foreground: 0 0% 100%;
+
+    --border: 220 14% 88%;
+    --input: 220 14% 88%;
+    --ring: 188 78% 38%;
+
+    --radius: 0.75rem;
+
+    --sidebar-background: 220 20% 98%;
+    --sidebar-foreground: 222 18% 32%;
+    --sidebar-primary: 188 78% 38%;
+    --sidebar-primary-foreground: 210 40% 98%;
+    --sidebar-accent: 188 40% 92%;
+    --sidebar-accent-foreground: 188 70% 26%;
+    --sidebar-border: 220 14% 90%;
+    --sidebar-ring: 188 78% 38%;
+
+    --chart-up: 155 55% 38%;
+    --chart-down: 0 72% 51%;
+    --chart-neutral: 220 10% 46%;
+
+    --gradient-primary: linear-gradient(135deg, hsl(188 78% 40%), hsl(200 75% 42%));
+    --gradient-card: linear-gradient(180deg, hsl(0 0% 100%), hsl(220 22% 98%));
+    --gradient-sidebar: linear-gradient(180deg, hsl(220 20% 98%), hsl(220 18% 96%));
+
+    --shadow-sm: 0 1px 2px 0 hsl(220 30% 20% / 0.05);
+    --shadow-md: 0 6px 18px -8px hsl(220 30% 20% / 0.1);
+    --shadow-lg: 0 14px 30px -12px hsl(220 30% 20% / 0.14);
+    --shadow-card: 0 2px 12px hsl(220 30% 20% / 0.05), 0 0 0 1px hsl(var(--neon-cyan) / 0.08);
+    --shadow-neon: 0 0 24px hsl(var(--neon-cyan) / 0.2);
+  }
+
+  .dark {
+    --neon-cyan: 188 100% 50%;
+    --neon-blue: 195 100% 52%;
+    --neon-line: 188 100% 55%;
+
+    --background: 0 0% 2%;
+    --foreground: 180 20% 96%;
+
+    --card: 0 0% 5%;
+    --card-foreground: 180 20% 96%;
+
+    --popover: 0 0% 5%;
+    --popover-foreground: 180 20% 96%;
+
+    --primary: 188 100% 50%;
+    --primary-foreground: 0 0% 4%;
+
+    --secondary: 0 0% 10%;
+    --secondary-foreground: 180 15% 88%;
+
+    --muted: 0 0% 12%;
+    --muted-foreground: 215 14% 62%;
+
+    --accent: 188 45% 14%;
+    --accent-foreground: 188 95% 72%;
+
+    --destructive: 0 62% 50%;
+    --destructive-foreground: 0 0% 100%;
+
+    --success: 155 50% 46%;
+    --success-foreground: 0 0% 100%;
+
+    --warning: 38 92% 54%;
+    --warning-foreground: 0 0% 100%;
+
+    --border: 188 25% 16%;
+    --input: 188 22% 14%;
+    --ring: 188 100% 50%;
+
+    --sidebar-background: 0 0% 3%;
+    --sidebar-foreground: 215 16% 72%;
+    --sidebar-primary: 188 100% 50%;
+    --sidebar-primary-foreground: 0 0% 4%;
+    --sidebar-accent: 188 40% 12%;
+    --sidebar-accent-foreground: 188 95% 78%;
+    --sidebar-border: 188 30% 12%;
+    --sidebar-ring: 188 100% 50%;
+
+    --chart-up: 155 55% 48%;
+    --chart-down: 0 62% 50%;
+    --chart-neutral: 215 15% 55%;
+
+    --gradient-primary: linear-gradient(135deg, hsl(188 100% 50%), hsl(200 100% 48%));
+    --gradient-card: linear-gradient(180deg, hsl(0 0% 6%), hsl(0 0% 4%));
+    --gradient-sidebar: linear-gradient(180deg, hsl(0 0% 3.5%), hsl(0 0% 2%));
+
+    --shadow-sm: 0 1px 2px 0 hsl(0 0% 0% / 0.35);
+    --shadow-md: 0 4px 6px -1px hsl(0 0% 0% / 0.45), 0 0 20px hsl(var(--neon-cyan) / 0.08);
+    --shadow-lg: 0 10px 15px -3px hsl(0 0% 0% / 0.45), 0 0 28px hsl(var(--neon-cyan) / 0.1);
+    --shadow-card: 0 2px 8px hsl(0 0% 0% / 0.4), 0 0 0 1px hsl(var(--neon-cyan) / 0.18), 0 0 24px hsl(var(--neon-cyan) / 0.06);
+    --shadow-neon: 0 0 32px hsl(var(--neon-cyan) / 0.35);
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html {
+    @apply transition-colors duration-300 ease-out;
+  }
+
+  body {
+    @apply min-h-screen bg-background font-sans text-foreground antialiased selection:bg-primary/25;
+    letter-spacing: -0.005em;
+  }
+
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.4s ease;
+  }
+
+  .dark body::before {
+    opacity: 1;
+    background-image:
+      linear-gradient(hsl(var(--neon-line) / 0.07) 1px, transparent 1px),
+      linear-gradient(90deg, hsl(var(--neon-line) / 0.07) 1px, transparent 1px);
+    background-size: 56px 56px;
+    background-position: center top;
+    mask-image: radial-gradient(ellipse 80% 70% at 50% 40%, black 20%, transparent 70%);
+  }
+
+  #root {
+    @apply relative z-[1] min-h-screen;
+  }
+}
+
+@layer components {
+  .surface-card {
+    @apply rounded-xl border border-border bg-card/95 shadow-card backdrop-blur-sm transition-all duration-300;
+  }
+  .dark .surface-card {
+    box-shadow: var(--shadow-card);
+  }
+  .surface-soft {
+    @apply rounded-xl border border-border/70 bg-card/65 backdrop-blur transition-all duration-300;
+  }
+  .section-heading {
+    @apply text-xl font-semibold tracking-tight text-foreground;
+  }
+  .section-subheading {
+    @apply mt-1 text-sm text-muted-foreground;
+  }
+  .card-hover {
+    @apply transition-all duration-300 ease-out;
+  }
+  .card-hover:hover {
+    @apply border-primary/25 shadow-lg -translate-y-0.5;
+  }
+  .dark .card-hover:hover {
+    box-shadow: var(--shadow-lg), 0 0 28px hsl(var(--neon-cyan) / 0.12);
+  }
+  .text-mono {
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .neon-border-glow {
+    @apply transition-all duration-300;
+    box-shadow: 0 0 0 1px hsl(var(--neon-cyan) / 0.25), 0 0 20px hsl(var(--neon-cyan) / 0.12);
+  }
+  .dark .neon-border-glow {
+    box-shadow: 0 0 0 1px hsl(var(--neon-cyan) / 0.35), 0 0 28px hsl(var(--neon-cyan) / 0.18);
+  }
+
+  .btn-neon {
+    @apply transition-all duration-300 ease-out;
+  }
+  .btn-neon:hover {
+    box-shadow: 0 0 22px hsl(var(--neon-cyan) / 0.35);
+  }
+  .dark .btn-neon:hover {
+    box-shadow: 0 0 28px hsl(var(--neon-cyan) / 0.45);
+  }
+}

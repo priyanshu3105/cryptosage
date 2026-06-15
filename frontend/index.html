@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <script>
+      (function () {
+        try {
+          var t = localStorage.getItem("cryptosage-theme");
+          if (t === "light") document.documentElement.classList.remove("dark");
+          else document.documentElement.classList.add("dark");
+        } catch (e) {}
+      })();
+    </script>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>CryptoSage</title>
+    <meta name="description" content="Cryptocurrency and DeFi financial literacy assistant" />
+    <meta name="author" content="CryptoSage" />
+
+    <meta property="og:title" content="CryptoSage" />
+    <meta property="og:description" content="Cryptocurrency and DeFi financial literacy assistant" />
+    <meta property="og:type" content="website" />
+
+    <meta name="twitter:card" content="summary_large_image" />
+  </head>
+
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
