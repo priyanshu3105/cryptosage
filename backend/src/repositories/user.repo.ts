@@ -3,12 +3,24 @@ import { UserModel } from "../models/User";
 type CreateUserInput = {
   name: string;
   email: string;
+  password?: string | null;
+  isGuest?: boolean;
+};
+
+type UpgradeUserInput = {
+  name: string;
+  email: string;
   password: string;
 };
 
 export const userRepo = {
   async create(input: CreateUserInput) {
-    return UserModel.create(input);
+    return UserModel.create({
+      name: input.name,
+      email: input.email,
+      password: input.password ?? null,
+      isGuest: input.isGuest ?? false,
+    });
   },
 
   async findByEmail(email: string) {
@@ -26,8 +38,21 @@ export const userRepo = {
   async updatePassword(userId: string, password: string) {
     return UserModel.findByIdAndUpdate(
       userId,
+      { $set: { password } },
+      { new: true }
+    ).exec();
+  },
+
+  async upgradeGuest(userId: string, input: UpgradeUserInput) {
+    return UserModel.findByIdAndUpdate(
+      userId,
       {
-        $set: { password },
+        $set: {
+          name: input.name,
+          email: input.email.toLowerCase().trim(),
+          password: input.password,
+          isGuest: false,
+        },
       },
       { new: true }
     ).exec();

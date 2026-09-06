@@ -1,11 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import type { PortfolioSummary, Holding, AddHoldingRequest, ApiError, PortfolioLog } from "@/types";
 import { apiClient } from "@/services/api";
-import { mockPortfolioSummary, mockLogs } from "@/services/mock-data";
-
-function isDemoSession() {
-  return localStorage.getItem("auth_token") === "demo-token";
-}
 
 function normalizeLogId(log: PortfolioLog & { _id?: string }): PortfolioLog {
   return { ...log, id: log.id || log._id || "" };
@@ -134,34 +129,10 @@ export function usePortfolio() {
       });
       setRecentJournalTrades(trades);
     } catch (err) {
-      if (isDemoSession()) {
-        let demoSummary = mockPortfolioSummary;
-        try {
-          const iconMap = await fetchCoinIconMap();
-          demoSummary = {
-            ...mockPortfolioSummary,
-            holdings: mockPortfolioSummary.holdings.map((h) => {
-              const icon = iconMap.get(h.coinId);
-              return icon ? { ...h, icon } : h;
-            }),
-          };
-        } catch {
-          /* keep mock without icons */
-        }
-        setSummary(demoSummary);
-        setRecentJournalTrades(
-          mockLogs
-            .filter((l) => l.actionType === "buy" || l.actionType === "sell")
-            .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-            .slice(0, 5)
-        );
-        setError(null);
-      } else {
-        setSummary(null);
-        setRecentJournalTrades([]);
-        const apiErr = err as ApiError;
-        setError(apiErr?.message ?? "Could not load portfolio. Is the API running?");
-      }
+      setSummary(null);
+      setRecentJournalTrades([]);
+      const apiErr = err as ApiError;
+      setError(apiErr?.message ?? "Could not load portfolio. Is the API running?");
     } finally {
       setIsLoading(false);
     }

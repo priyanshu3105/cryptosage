@@ -1,15 +1,17 @@
-const MIN_SCORE = 3;
+const MIN_DOMAIN_SIGNALS = 1;
 
 const questionIntentSignals = [
   "what is",
+  "what are",
   "what does",
+  "what risks",
+  "what should",
   "how does",
   "how do",
-  "how should i interpret",
+  "how should",
+  "how can",
   "why is",
   "why are",
-  "what are",
-  "how can",
   "can you explain",
   "explain",
   "tell me about",
@@ -17,6 +19,8 @@ const questionIntentSignals = [
   "walk me through",
   "difference between",
   "compare",
+  "besides",
+  "should i check",
   "when is",
   "when are",
 ];
@@ -30,11 +34,15 @@ const educationalCueSignals = [
   "important",
   "watch for",
   "look for",
+  "check",
+  "risks",
+  "risk",
 ];
 
 const defiSignals = [
   "defi",
   "tvl",
+  "total value locked",
   "apy",
   "apr",
   "amm",
@@ -123,7 +131,9 @@ const marketSignals = [
   "cryptocurrency",
   "crypto market",
   "bitcoin",
+  "btc",
   "ethereum",
+  "eth",
   "altcoin",
   "stablecoin",
   "coin",
@@ -188,6 +198,52 @@ const marketSignals = [
   "fork",
   "hard fork",
   "soft fork",
+  // Common assets people ask about by name
+  "solana",
+  "sol",
+  "cardano",
+  "ada",
+  "ripple",
+  "xrp",
+  "dogecoin",
+  "doge",
+  "polkadot",
+  "dot",
+  "avalanche",
+  "avax",
+  "polygon",
+  "matic",
+  "chainlink",
+  "link",
+  "litecoin",
+  "ltc",
+  "bitcoin cash",
+  "bch",
+  "tron",
+  "trx",
+  "cosmos",
+  "atom",
+  "monero",
+  "xmr",
+  "zcash",
+  "zec",
+  "dash",
+  "stellar",
+  "xlm",
+  "toncoin",
+  "sui",
+  "aptos",
+  "arbitrum",
+  "optimism",
+  "shiba",
+  "shib",
+  "pepe",
+  "usdt",
+  "tether",
+  "usdc",
+  "dai",
+  "bnb",
+  "binance",
 ];
 
 const riskSignals = [
@@ -216,6 +272,10 @@ const riskSignals = [
   "smart contract bug",
   "admin key",
   "wallet approval",
+  "contract risk",
+  "security",
+  "safe",
+  "unsafe",
 ];
 
 const appHelpSignals = [
@@ -224,6 +284,7 @@ const appHelpSignals = [
   "holdings",
   "dashboard",
   "watchlist",
+  "journal",
   "chat feature",
   "chat mode",
   "market mode",
@@ -251,6 +312,9 @@ const appHelpSignals = [
   "change password",
   "delete my account",
   "delete account",
+  "guest",
+  "sign up",
+  "signup",
 ];
 
 const blockedIntentSignals = [
@@ -270,6 +334,9 @@ const blockedIntentSignals = [
   "job application",
   "relationship advice",
   "therapy",
+  "recipe",
+  "weather",
+  "movie recommendation",
 ];
 
 export type LayerADecision = {
@@ -285,11 +352,26 @@ function normalize(message: string) {
 }
 
 function matchSignals(text: string, signals: string[]) {
-  return signals.filter((signal) => text.includes(signal));
+  return signals.filter((signal) => {
+    // Prefer word-boundary-ish matching for short tickers (btc, eth, sol)
+    if (signal.length <= 3) {
+      return new RegExp(`(?:^|\\s)${signal}(?:$|\\s)`).test(text);
+    }
+    return text.includes(signal);
+  });
 }
 
 function unique(items: string[]) {
   return [...new Set(items)];
+}
+
+function pickMode(
+  requestedMode: "market" | "defi" | "auto",
+  matchedDefi: string[],
+  matchedMarket: string[]
+): "market" | "defi" {
+  if (requestedMode === "defi" || requestedMode === "market") return requestedMode;
+  return matchedDefi.length > matchedMarket.length ? "defi" : "market";
 }
 
 export const topicGateService = {
@@ -304,85 +386,79 @@ export const topicGateService = {
     const matchedQuestionIntent = matchSignals(text, questionIntentSignals);
     const matchedEducationalCue = matchSignals(text, educationalCueSignals);
 
-    const defiScore = matchedDefi.length + matchedRisk.filter((signal) => matchedDefi.includes(signal)).length;
-    const marketScore =
-      matchedMarket.length + matchedRisk.filter((signal) => matchedMarket.includes(signal)).length;
-    const appHelpScore = matchedAppHelp.length;
-    const maxScore = Math.max(defiScore, marketScore);
-    const explicitModeSupport =
-      (requestedMode === "defi" && matchedDefi.length >= 1) ||
-      (requestedMode === "market" && matchedMarket.length >= 1);
-    const autoModeStrongMatch =
-      requestedMode === "auto" &&
-      ((matchedDefi.length >= 2 && matchedMarket.length === 0) ||
-        (matchedMarket.length >= 2 && matchedDefi.length === 0));
-    const shortEducationalQuery =
-      (matchedQuestionIntent.length >= 1 || matchedEducationalCue.length >= 1) &&
-      ((matchedDefi.length >= 1 && matchedMarket.length === 0) ||
-        (matchedMarket.length >= 1 && matchedDefi.length === 0));
+    const domainSignalCount =
+      matchedDefi.length + matchedMarket.length + matchedRisk.length + matchedAppHelp.length;
+    const modeUsed = pickMode(requestedMode, matchedDefi, matchedMarket);
+    const allMatched = unique([
+      ...matchedMarket,
+      ...matchedDefi,
+      ...matchedRisk,
+      ...matchedAppHelp,
+      ...matchedEducationalCue,
+      ...matchedQuestionIntent,
+    ]);
 
-    if (matchedBlocked.length > 0 && maxScore < MIN_SCORE + 2 && appHelpScore === 0) {
+    // Hard block only when there is no crypto/DeFi signal at all.
+    if (matchedBlocked.length > 0 && domainSignalCount === 0) {
       return {
         allowed: false,
-        modeUsed: requestedMode === "defi" ? "defi" : "market",
+        modeUsed,
         reason: "Blocked intent detected",
         confidence: 0,
         matchedSignals: unique(matchedBlocked),
       };
     }
 
-    if (appHelpScore > 0 && maxScore < MIN_SCORE) {
+    if (matchedAppHelp.length > 0) {
       return {
         allowed: true,
-        modeUsed: requestedMode === "defi" ? "defi" : "market",
+        modeUsed,
         reason: "App usage question allowed",
-        confidence: Math.min(1, appHelpScore / 8),
+        confidence: Math.min(1, matchedAppHelp.length / 4),
         matchedSignals: unique(matchedAppHelp),
       };
     }
 
-    if (explicitModeSupport || autoModeStrongMatch || shortEducationalQuery) {
-      const modeUsed: "market" | "defi" =
-        requestedMode === "auto" ? (matchedDefi.length > matchedMarket.length ? "defi" : "market") : requestedMode;
-
+    // Any clear crypto / DeFi / risk signal is enough.
+    if (domainSignalCount >= MIN_DOMAIN_SIGNALS) {
       return {
         allowed: true,
         modeUsed,
         reason: `${modeUsed === "defi" ? "DeFi" : "Market"} educational query allowed`,
-        confidence: Math.min(1, Math.max(maxScore, 2) / 8),
-        matchedSignals: unique([...matchedMarket, ...matchedDefi, ...matchedRisk, ...matchedAppHelp]),
+        confidence: Math.min(1, domainSignalCount / 6),
+        matchedSignals: allMatched,
       };
     }
 
-    if (maxScore < MIN_SCORE) {
+    // "What is <asset>?" style questions with a short unknown name still go to the model.
+    // The LLM can answer or say it is unsure; the gate should not hard-refuse.
+    const whatIsMatch = text.match(/^(?:what is|whats|what's|tell me about|explain)\s+([a-z0-9-]{2,40})\b/);
+    if (whatIsMatch && matchedBlocked.length === 0) {
       return {
-        allowed: false,
-        modeUsed: requestedMode === "defi" ? "defi" : "market",
-        reason: "Query outside supported crypto and DeFi domain",
-        confidence: Math.min(1, maxScore / 8),
-        matchedSignals: unique([
-          ...matchedMarket,
-          ...matchedDefi,
-          ...matchedRisk,
-          ...matchedEducationalCue,
-        ]),
+        allowed: true,
+        modeUsed: "market",
+        reason: "Short educational crypto-style query allowed",
+        confidence: 0.35,
+        matchedSignals: unique([...matchedQuestionIntent, whatIsMatch[1]]),
       };
     }
 
-    const modeUsed: "market" | "defi" = matchedDefi.length > matchedMarket.length ? "defi" : "market";
+    if (matchedQuestionIntent.length > 0 && matchedEducationalCue.length > 0) {
+      return {
+        allowed: true,
+        modeUsed,
+        reason: "Educational crypto-adjacent query allowed",
+        confidence: 0.4,
+        matchedSignals: allMatched,
+      };
+    }
 
     return {
-      allowed: true,
+      allowed: false,
       modeUsed,
-      reason: `${modeUsed === "defi" ? "DeFi" : "Market"} educational query allowed`,
-      confidence: Math.min(1, maxScore / 8),
-      matchedSignals: unique([
-        ...matchedMarket,
-        ...matchedDefi,
-        ...matchedRisk,
-        ...matchedAppHelp,
-        ...matchedEducationalCue,
-      ]),
+      reason: "Query outside supported crypto and DeFi domain",
+      confidence: 0,
+      matchedSignals: allMatched,
     };
   },
 };

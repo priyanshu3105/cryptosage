@@ -3,17 +3,17 @@ import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   LayoutDashboard, TrendingUp, Shield, BookOpen, Calculator,
-  Settings, LogOut, Menu, X, ChevronLeft, User,
+  Settings, Menu, X, ChevronLeft, User, LogIn, LogOut,
 } from "lucide-react";
 import { AssistantWidget } from "@/components/chat/AssistantWidget";
-import { useAuth } from "@/contexts/AuthContext";
+import { useSession } from "@/contexts/SessionContext";
 import { CryptoSageLogo } from "@/components/CryptoSageLogo";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
 import { cn } from "@/lib/format";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-
+import { Badge } from "@/components/ui/badge";
 const navItems = [
   { path: "/portfolio", label: "Portfolio", icon: LayoutDashboard },
   { path: "/market", label: "Market", icon: TrendingUp },
@@ -27,9 +27,9 @@ export function AppLayout() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, logout } = useAuth();
+  const { user, logout, isBusy } = useSession();
+  const isGuest = Boolean(user?.isGuest);
 
-  const handleLogout = () => { logout(); navigate("/login"); };
   const isActive = (path: string) => location.pathname === path || location.pathname.startsWith(path + "/");
 
   return (
@@ -174,17 +174,40 @@ export function AppLayout() {
                   <div className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/10 text-primary">
                     <User className="h-3.5 w-3.5" />
                   </div>
-                  <span className="hidden sm:inline">{user?.name}</span>
+                  <span className="hidden sm:inline">{user?.name ?? "Guest"}</span>
+                  {isGuest && (
+                    <Badge variant="secondary" className="hidden h-5 px-1.5 text-[10px] sm:inline-flex">
+                      Guest
+                    </Badge>
+                  )}
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-48">
                 <DropdownMenuItem onClick={() => navigate("/settings")}>
                   <Settings className="mr-2 h-3.5 w-3.5" />Settings
                 </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={handleLogout} className="text-destructive">
-                  <LogOut className="mr-2 h-3.5 w-3.5" />Logout
-                </DropdownMenuItem>
+                {isGuest ? (
+                  <>
+                    <DropdownMenuItem onClick={() => navigate("/login")}>
+                      <LogIn className="mr-2 h-3.5 w-3.5" />Sign in
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => navigate("/signup")}>
+                      <User className="mr-2 h-3.5 w-3.5" />Create account
+                    </DropdownMenuItem>
+                  </>
+                ) : (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      disabled={isBusy}
+                      onClick={() => {
+                        void logout();
+                      }}
+                    >
+                      <LogOut className="mr-2 h-3.5 w-3.5" />Sign out
+                    </DropdownMenuItem>
+                  </>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           </div>

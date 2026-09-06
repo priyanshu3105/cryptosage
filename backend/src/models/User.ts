@@ -18,11 +18,17 @@ const UserSchema = new Schema(
       minlength: 5,
       maxlength: 160,
     },
+    // Guests have no password; accounts store a bcrypt hash.
     password: {
       type: String,
       minlength: 60,
       maxlength: 255,
-      required: true,
+      default: null,
+    },
+    isGuest: {
+      type: Boolean,
+      default: false,
+      index: true,
     },
   },
   {
@@ -30,6 +36,7 @@ const UserSchema = new Schema(
     versionKey: false,
   }
 );
+
 export type UserDocument = InferSchemaType<typeof UserSchema> & { id: string };
 
 export const UserModel: Model<InferSchemaType<typeof UserSchema>> =

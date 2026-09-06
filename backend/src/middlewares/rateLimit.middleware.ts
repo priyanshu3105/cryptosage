@@ -33,5 +33,7 @@ function createRateLimiter(options: { windowMs: number; max: number }) {
   };
 }
 
-export const authRateLimit = createRateLimiter({ windowMs: 15 * 60 * 1000, max: 10 });
+// Guest sessions are created per browser, so shared/NAT'd IPs need headroom.
+export const guestRateLimit = createRateLimiter({ windowMs: 15 * 60 * 1000, max: 30 });
+export const authRateLimit = createRateLimiter({ windowMs: 15 * 60 * 1000, max: 40 });
 export const chatRateLimit = createRateLimiter({ windowMs: 60 * 1000, max: 15 });

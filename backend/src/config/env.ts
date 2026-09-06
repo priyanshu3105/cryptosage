@@ -20,7 +20,7 @@ const EnvSchema = z.object({
   // Groq
   GROQ_API_KEY: z.string().min(1),
   GROQ_BASE_URL: z.string().url().default("https://api.groq.com/openai/v1"),
-  GROQ_MODEL: z.string().default("llama-3.1-8b-instant"),
+  GROQ_MODEL: z.string().default("openai/gpt-oss-20b"),
 
   // CORS
   CORS_ORIGIN: z.string().default("*"),

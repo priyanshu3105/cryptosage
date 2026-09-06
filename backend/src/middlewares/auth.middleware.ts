@@ -30,6 +30,7 @@ export async function requireAuth(req: Request, _res: Response, next: NextFuncti
       id: user.id,
       email: user.email,
       name: user.name,
+      isGuest: Boolean(user.isGuest),
     };
 
     next();

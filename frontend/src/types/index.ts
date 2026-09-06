@@ -1,15 +1,11 @@
-// Auth
+// Session
 export interface User {
   id: string;
   email: string;
   name: string;
+  isGuest?: boolean;
   avatar?: string;
   createdAt?: string;
-}
-
-export interface AuthTokens {
-  accessToken: string;
-  refreshToken?: string;
 }
 
 export interface LoginRequest {
@@ -18,15 +14,15 @@ export interface LoginRequest {
 }
 
 export interface SignupRequest {
+  name: string;
   email: string;
   password: string;
-  name: string;
 }
 
-export interface AuthResponse {
-  user: User;
-  token?: string;
-  tokens?: AuthTokens;
+export interface UpgradeGuestRequest {
+  name: string;
+  email: string;
+  password: string;
 }
 
 // Portfolio

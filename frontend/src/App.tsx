@@ -4,9 +4,9 @@ import { BrowserRouter, Route, Routes, Navigate } from "react-router-dom";
 import { cryptoSageFaviconSvg } from "@/components/CryptoSageLogo";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { AuthProvider } from "@/contexts/AuthContext";
+import { SessionProvider } from "@/contexts/SessionContext";
 import { AssistantChatProvider } from "@/contexts/AssistantChatContext";
-import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
+import { SessionGate } from "@/components/session/SessionGate";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { AuthLayout } from "@/components/layout/AuthLayout";
 import LoginPage from "@/pages/Login";
@@ -36,23 +36,21 @@ const App = () => {
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <Sonner />
-        <AuthProvider>
+        <SessionProvider>
           <BrowserRouter>
             <Routes>
-              {/* Public Auth Routes */}
               <Route element={<AuthLayout />}>
                 <Route path="/login" element={<LoginPage />} />
                 <Route path="/signup" element={<SignupPage />} />
               </Route>
 
-              {/* Protected App Routes */}
               <Route
                 element={
-                  <ProtectedRoute>
+                  <SessionGate>
                     <AssistantChatProvider>
                       <AppLayout />
                     </AssistantChatProvider>
-                  </ProtectedRoute>
+                  </SessionGate>
                 }
               >
                 <Route path="/portfolio" element={<PortfolioPage />} />
@@ -63,12 +61,11 @@ const App = () => {
                 <Route path="/settings" element={<SettingsPage />} />
               </Route>
 
-              {/* Redirects */}
               <Route path="/" element={<Navigate to="/portfolio" replace />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>
-        </AuthProvider>
+        </SessionProvider>
       </TooltipProvider>
     </QueryClientProvider>
   );

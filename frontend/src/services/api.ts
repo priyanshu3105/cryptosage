@@ -2,6 +2,8 @@ import type { ApiError } from "@/types";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "/api";
 
+export const AUTH_TOKEN_KEY = "auth_token";
+
 export type ReplayWarning = {
   code:
     | "INVALID_JOURNAL_TRADE"
@@ -36,7 +38,7 @@ class ApiClient {
   }
 
   private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
-    const token = localStorage.getItem("auth_token");
+    const token = localStorage.getItem(AUTH_TOKEN_KEY);
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
       ...(options.headers as Record<string, string>),

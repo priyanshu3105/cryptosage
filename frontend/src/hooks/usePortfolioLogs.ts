@@ -1,11 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import type { PortfolioLog, JournalFilters, CreateLogRequest, ApiError } from "@/types";
 import { apiClient, type ReplayWarning } from "@/services/api";
-import { mockLogs } from "@/services/mock-data";
-
-function isDemoSession() {
-  return localStorage.getItem("auth_token") === "demo-token";
-}
 
 export type LogWriteResult = {
   replayWarning?: ReplayWarning;
@@ -37,14 +32,9 @@ export function usePortfolioLogs() {
         }))
       );
     } catch (err) {
-      if (isDemoSession()) {
-        setLogs(mockLogs);
-        setError(null);
-      } else {
-        setLogs([]);
-        const apiErr = err as ApiError;
-        setError(apiErr?.message ?? "Could not load journal. Is the API running?");
-      }
+      setLogs([]);
+      const apiErr = err as ApiError;
+      setError(apiErr?.message ?? "Could not load journal. Is the API running?");
     } finally {
       setIsLoading(false);
     }

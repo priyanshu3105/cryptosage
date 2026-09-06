@@ -8,7 +8,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { useAuth } from "@/contexts/AuthContext";
+import { useSession } from "@/contexts/SessionContext";
 import { apiClient } from "@/services/api";
 
 type MessageVariant = "answer" | "refusal" | "error" | "fallback";
@@ -89,6 +89,37 @@ const starterPrompts = [
 ];
 
 const localFallbacks = [
+  {
+    label: "Built-in DeFi Risk Guide",
+    matches: [/risks?.*tvl/i, /tvl.*risks?/i, /besides tvl/i, /besides.*tvl/i],
+    content:
+      "TVL is only one signal. Besides TVL, useful risk checks include:\n\n" +
+      "- Smart-contract risk: audits, bug history, and how complex the code is.\n" +
+      "- Admin / governance risk: who can pause, upgrade, or move funds.\n" +
+      "- Oracle and bridge risk: where prices and cross-chain transfers come from.\n" +
+      "- Liquidity and exit risk: whether you can withdraw without huge slippage.\n" +
+      "- Incentive risk: whether yields depend on temporary token rewards.\n" +
+      "- Concentration risk: a few wallets or assets dominating the protocol.\n\n" +
+      "High TVL does not mean a protocol is safe.",
+    suggestedQuestions: [
+      "What is an audit in DeFi?",
+      "What is impermanent loss?",
+    ],
+  },
+  {
+    label: "Built-in Privacy Coin Guide",
+    matches: [/\bzcash\b/i, /\bzec\b/i],
+    content:
+      "Zcash (ZEC) is a cryptocurrency focused on optional privacy.\n\n" +
+      "- It uses zero-knowledge proofs (zk-SNARKs) so some transactions can hide sender, receiver, and amount.\n" +
+      "- Users can usually choose transparent or shielded transfers.\n" +
+      "- Like other crypto assets, it still carries market, liquidity, regulatory, and technology risks.\n" +
+      "- Privacy features and exchange support can vary by jurisdiction and venue.",
+    suggestedQuestions: [
+      "How do privacy coins differ from Bitcoin?",
+      "What does market cap mean in crypto?",
+    ],
+  },
   {
     label: "Built-in DeFi Guide",
     matches: [/tvl\b/i, /total value locked/i],
@@ -242,8 +273,9 @@ export function assistantBubbleClasses(variant: MessageVariant | undefined) {
 }
 
 export function AssistantChatProvider({ children }: { children: ReactNode }) {
-  const { user, isAuthenticated } = useAuth();
-  const storageKey = useMemo(() => createStorageKey(user?.id), [user?.id]);
+  const { user } = useSession();
+  const userId = user?.id;
+  const storageKey = useMemo(() => createStorageKey(userId), [userId]);
   const hasLoadedRef = useRef(false);
 
   const [sessions, setSessions] = useState<AssistantSession[]>([]);
@@ -254,7 +286,7 @@ export function AssistantChatProvider({ children }: { children: ReactNode }) {
   const [showHistory, setShowHistory] = useState(true);
 
   useEffect(() => {
-    if (!isAuthenticated) {
+    if (!userId) {
       setSessions([]);
       setActiveSessionId(null);
       setInput("");
@@ -263,16 +295,16 @@ export function AssistantChatProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    const storedSessions = readStoredSessions(user?.id);
+    const storedSessions = readStoredSessions(userId);
     setSessions(storedSessions);
     setActiveSessionId(storedSessions[0]?.id ?? null);
     hasLoadedRef.current = true;
-  }, [isAuthenticated, user?.id]);
+  }, [userId]);
 
   useEffect(() => {
-    if (!isAuthenticated || !hasLoadedRef.current || typeof window === "undefined") return;
+    if (!userId || !hasLoadedRef.current || typeof window === "undefined") return;
     window.localStorage.setItem(storageKey, JSON.stringify(sessions));
-  }, [isAuthenticated, sessions, storageKey]);
+  }, [userId, sessions, storageKey]);
 
   useEffect(() => {
     if (!activeSessionId && sessions.length > 0) {
