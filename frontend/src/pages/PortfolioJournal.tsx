@@ -163,6 +163,11 @@ function CreateLogModal({
                                   coinId: c.id,
                                   symbol: c.symbol,
                                   name: c.name,
+                                  // Prefill from /market/top — already loaded with the coin list.
+                                  price:
+                                    typeof c.price === "number" && Number.isFinite(c.price)
+                                      ? c.price
+                                      : f.price,
                                 }));
                                 setCoinOpen(false);
                               }}
@@ -203,6 +208,11 @@ function CreateLogModal({
                     value={form.price === undefined ? "" : form.price}
                     onChange={(e) => setForm({ ...form, price: e.target.value === "" ? undefined : Number(e.target.value) })}
                   />
+                  {form.coinId && form.price != null && (
+                    <p className="mt-1 text-[11px] leading-snug text-muted-foreground">
+                      Filled from live market price — edit if your fill differed.
+                    </p>
+                  )}
                 </div>
                 <div className="col-span-2 sm:col-span-1">
                   <Label className="text-xs">Fees (optional)</Label>
