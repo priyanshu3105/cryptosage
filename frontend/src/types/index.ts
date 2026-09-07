@@ -35,11 +35,16 @@ export interface Holding {
   amount: number;
   avgBuyPrice: number;
   currentPrice: number;
+  /** quantity × live price */
   value: number;
+  /** remaining cost basis: quantity × average buy price (fees included on buys) */
+  invested: number;
   pnl: number;
   pnlPercent: number;
   allocation: number;
   icon?: string;
+  /** How the displayed price was resolved. Never treat a failed feed as $0. */
+  priceSource: "live" | "market" | "journal" | "unavailable";
 }
 
 export interface PortfolioSummary {

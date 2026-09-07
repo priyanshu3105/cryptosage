@@ -8,11 +8,11 @@ export const MOCK_ENABLED = true;
 const delay = (ms = 600) => new Promise((r) => setTimeout(r, ms));
 
 export const mockHoldings: Holding[] = [
-  { id: "1", coinId: "bitcoin", symbol: "BTC", name: "Bitcoin", amount: 1.5, avgBuyPrice: 42000, currentPrice: 67500, value: 101250, pnl: 38250, pnlPercent: 60.71, allocation: 55 },
-  { id: "2", coinId: "ethereum", symbol: "ETH", name: "Ethereum", amount: 12, avgBuyPrice: 2800, currentPrice: 3450, value: 41400, pnl: 7800, pnlPercent: 23.21, allocation: 22.5 },
-  { id: "3", coinId: "solana", symbol: "SOL", name: "Solana", amount: 100, avgBuyPrice: 95, currentPrice: 178, value: 17800, pnl: 8300, pnlPercent: 87.37, allocation: 9.7 },
-  { id: "4", coinId: "chainlink", symbol: "LINK", name: "Chainlink", amount: 500, avgBuyPrice: 14, currentPrice: 18.5, value: 9250, pnl: 2250, pnlPercent: 32.14, allocation: 5 },
-  { id: "5", coinId: "aave", symbol: "AAVE", name: "Aave", amount: 50, avgBuyPrice: 85, currentPrice: 142, value: 7100, pnl: 2850, pnlPercent: 67.06, allocation: 3.9 },
+  { id: "1", coinId: "bitcoin", symbol: "BTC", name: "Bitcoin", amount: 1.5, avgBuyPrice: 42000, currentPrice: 67500, value: 101250, invested: 63000, pnl: 38250, pnlPercent: 60.71, allocation: 55, priceSource: "market" },
+  { id: "2", coinId: "ethereum", symbol: "ETH", name: "Ethereum", amount: 12, avgBuyPrice: 2800, currentPrice: 3450, value: 41400, invested: 33600, pnl: 7800, pnlPercent: 23.21, allocation: 22.5, priceSource: "market" },
+  { id: "3", coinId: "solana", symbol: "SOL", name: "Solana", amount: 100, avgBuyPrice: 95, currentPrice: 178, value: 17800, invested: 9500, pnl: 8300, pnlPercent: 87.37, allocation: 9.7, priceSource: "market" },
+  { id: "4", coinId: "chainlink", symbol: "LINK", name: "Chainlink", amount: 500, avgBuyPrice: 14, currentPrice: 18.5, value: 9250, invested: 7000, pnl: 2250, pnlPercent: 32.14, allocation: 5, priceSource: "market" },
+  { id: "5", coinId: "aave", symbol: "AAVE", name: "Aave", amount: 50, avgBuyPrice: 85, currentPrice: 142, value: 7100, invested: 4250, pnl: 2850, pnlPercent: 67.06, allocation: 3.9, priceSource: "market" },
 ];
 
 export const mockPortfolioSummary: PortfolioSummary = {

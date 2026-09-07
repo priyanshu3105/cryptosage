@@ -1,5 +1,6 @@
 import { NextFunction, Request, Response } from "express";
 import { portfolioService } from "../services/portfolio.service";
+import { rebuildHoldingsFromJournal } from "../services/portfolioJournalSync.service";
 import { AppError } from "../utils/appError";
 
 function getAuthenticatedUserId(req: Request) {
@@ -24,6 +25,8 @@ export const portfolioController = {
   async get(req: Request, res: Response, next: NextFunction) {
     try {
       const userId = getAuthenticatedUserId(req);
+      // Replay journal buys/sells so holdings always match quantity × cost basis.
+      await rebuildHoldingsFromJournal(userId);
       const portfolio = await portfolioService.getPortfolio(userId);
       res.json({ data: portfolio });
     } catch (error) {

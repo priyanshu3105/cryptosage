@@ -36,7 +36,7 @@ import {
   CommandList,
 } from "@/components/ui/command";
 import { cn } from "@/lib/utils";
-import { formatDateTime, formatCurrency } from "@/lib/format";
+import { formatDateTime, formatCurrency, formatQuantity } from "@/lib/format";
 import type { JournalActionType, Sentiment, CreateLogRequest, ApiError } from "@/types";
 import type { ReplayWarning } from "@/services/api";
 
@@ -197,6 +197,9 @@ function CreateLogModal({
                     value={form.quantity === undefined ? "" : form.quantity}
                     onChange={(e) => setForm({ ...form, quantity: e.target.value === "" ? undefined : Number(e.target.value) })}
                   />
+                  <p className="mt-1 text-[11px] leading-snug text-muted-foreground">
+                    How many coins. Portfolio value is quantity × live price.
+                  </p>
                 </div>
                 <div className="sm:col-span-1">
                   <Label className="text-xs">Price (USD / coin)</Label>
@@ -226,6 +229,31 @@ function CreateLogModal({
                   />
                 </div>
               </div>
+              {(() => {
+                const qty = form.quantity ?? 0;
+                const px = form.price ?? 0;
+                const fees = form.fees ?? 0;
+                const notional = qty * px;
+                const total = form.actionType === "sell" ? Math.max(0, notional - fees) : notional + fees;
+                if (!(qty > 0 && px >= 0 && Number.isFinite(notional))) return null;
+                return (
+                  <p className="rounded-md bg-muted/50 px-3 py-2 text-xs text-muted-foreground">
+                    {form.actionType === "buy" ? "This buy adds " : "This sell removes "}
+                    <span className="font-mono text-card-foreground">{formatQuantity(qty)}</span>
+                    {" × "}
+                    <span className="font-mono text-card-foreground">{formatCurrency(px)}</span>
+                    {fees > 0 ? (
+                      <>
+                        {form.actionType === "buy" ? " + fees " : " − fees "}
+                        <span className="font-mono text-card-foreground">{formatCurrency(fees)}</span>
+                      </>
+                    ) : null}
+                    {" = "}
+                    <span className="font-medium text-card-foreground">{formatCurrency(total)}</span>
+                    {form.actionType === "buy" ? " to cost basis." : " of proceeds (qty leaves the portfolio)."}
+                  </p>
+                );
+              })()}
             </div>
           )}
 
@@ -360,11 +388,34 @@ export default function PortfolioJournalPage() {
                         <button type="button" onClick={() => setDeleteConfirmId(log.id)} className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"><Trash2 className="h-3.5 w-3.5" /></button>
                       </div>
 
-                      {(log.quantity || log.price) && (
-                        <div className="mb-2 flex gap-4 text-xs text-muted-foreground">
-                          {log.quantity && <span>Qty: <span className="font-mono text-card-foreground">{log.quantity}</span></span>}
-                          {log.price && <span>Price: <span className="font-mono text-card-foreground">{formatCurrency(log.price)}</span></span>}
-                          {log.fees && <span>Fees: <span className="font-mono text-card-foreground">{formatCurrency(log.fees)}</span></span>}
+                      {(log.quantity != null || log.price != null) && (
+                        <div className="mb-2 flex flex-wrap gap-4 text-xs text-muted-foreground">
+                          {log.quantity != null && (
+                            <span>
+                              Qty: <span className="font-mono text-card-foreground">{formatQuantity(log.quantity)}</span>
+                            </span>
+                          )}
+                          {log.price != null && (
+                            <span>
+                              Price: <span className="font-mono text-card-foreground">{formatCurrency(log.price)}</span>
+                            </span>
+                          )}
+                          {log.quantity != null && log.price != null && (
+                            <span>
+                              Total:{" "}
+                              <span className="font-mono text-card-foreground">
+                                {formatCurrency(
+                                  log.quantity * log.price +
+                                    (log.actionType === "buy" ? log.fees ?? 0 : 0)
+                                )}
+                              </span>
+                            </span>
+                          )}
+                          {log.fees ? (
+                            <span>
+                              Fees: <span className="font-mono text-card-foreground">{formatCurrency(log.fees)}</span>
+                            </span>
+                          ) : null}
                         </div>
                       )}
 

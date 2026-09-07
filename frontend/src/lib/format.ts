@@ -20,6 +20,15 @@ export function formatNumber(value: number, decimals = 2): string {
   return n.toLocaleString(undefined, { maximumFractionDigits: decimals });
 }
 
+export function formatQuantity(value: number): string {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return "—";
+  if (n === 0) return "0";
+  const abs = Math.abs(n);
+  const digits = abs >= 1000 ? 2 : abs >= 1 ? 6 : 8;
+  return n.toLocaleString(undefined, { maximumFractionDigits: digits });
+}
+
 export function formatDate(date: string): string {
   return new Date(date).toLocaleDateString("en-US", {
     month: "short",

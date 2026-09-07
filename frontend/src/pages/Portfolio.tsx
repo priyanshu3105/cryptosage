@@ -7,9 +7,16 @@ import { PageTransition, FadeIn } from "@/components/shared/Animations";
 import { CardSkeleton, TableSkeleton } from "@/components/shared/Skeletons";
 import { ErrorCard } from "@/components/shared/ErrorCard";
 import { EmptyState } from "@/components/shared/EmptyState";
-import { formatCurrency, formatPercent, formatDateTime } from "@/lib/format";
+import { formatCurrency, formatPercent, formatDateTime, formatQuantity } from "@/lib/format";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import type { Holding } from "@/types";
+
+function priceSourceLabel(source: Holding["priceSource"]) {
+  if (source === "journal") return "Last trade price";
+  if (source === "unavailable") return "Price unavailable";
+  return null;
+}
 
 function HoldingAvatar({ holding }: { holding: Pick<Holding, "symbol" | "icon"> }) {
   const [failed, setFailed] = useState(false);
@@ -91,14 +98,14 @@ export default function PortfolioPage() {
         <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <StatCard
             label="Total Value"
-            hint="What your positions are worth right now at live prices."
+            hint="Quantity × resolved market price. Coins with no usable price are left out of this total."
             value={formatCurrency(summary.totalValue)}
             icon={Wallet}
             delay={0}
           />
           <StatCard
             label="Total P&L"
-            hint="Profit or loss versus what you paid on average (including buys and sells in your Journal)."
+            hint="Value minus remaining cost basis (quantity × average buy, including buy fees). Missing prices are not treated as $0."
             value={formatCurrency(summary.totalPnl)}
             change={summary.totalPnlPercent}
             icon={BarChart3}
@@ -144,8 +151,9 @@ export default function PortfolioPage() {
               <thead>
                 <tr className="border-b border-border text-left text-xs text-muted-foreground">
                   <th className="p-4">Asset</th>
-                  <th className="p-4 text-right">Amount</th>
-                  <th className="p-4 text-right">Price</th>
+                  <th className="p-4 text-right">Quantity</th>
+                  <th className="p-4 text-right">Avg buy</th>
+                  <th className="p-4 text-right">Live price</th>
                   <th className="p-4 text-right">Value</th>
                   <th className="p-4 text-right">P&L</th>
                   <th className="p-4 text-right">Allocation</th>
@@ -166,16 +174,39 @@ export default function PortfolioPage() {
                         <div>
                           <p className="font-medium text-card-foreground">{h.name ?? h.coinId}</p>
                           <p className="text-xs text-muted-foreground">{h.symbol ?? "-"}</p>
+                          {priceSourceLabel(h.priceSource) ? (
+                            <Badge variant="outline" className="mt-1 text-[10px] font-normal">
+                              {priceSourceLabel(h.priceSource)}
+                            </Badge>
+                          ) : null}
                         </div>
                       </div>
                     </td>
-                    <td className="p-4 text-right font-mono text-card-foreground">{h.amount}</td>
-                    <td className="p-4 text-right font-mono text-card-foreground">{formatCurrency(h.currentPrice)}</td>
-                    <td className="p-4 text-right font-mono font-medium text-card-foreground">{formatCurrency(h.value)}</td>
+                    <td className="p-4 text-right font-mono text-card-foreground">{formatQuantity(h.amount)}</td>
+                    <td className="p-4 text-right font-mono text-card-foreground">{formatCurrency(h.avgBuyPrice)}</td>
+                    <td className="p-4 text-right font-mono text-card-foreground">
+                      {h.priceSource === "unavailable" ? "—" : formatCurrency(h.currentPrice)}
+                    </td>
+                    <td className="p-4 text-right font-mono font-medium text-card-foreground">
+                      {h.priceSource === "unavailable" ? (
+                        <span className="text-muted-foreground">—</span>
+                      ) : (
+                        <>
+                          <div>{formatCurrency(h.value)}</div>
+                          <div className="text-[11px] font-normal text-muted-foreground">
+                            {formatQuantity(h.amount)} × {formatCurrency(h.currentPrice)}
+                          </div>
+                        </>
+                      )}
+                    </td>
                     <td className="p-4 text-right">
-                      <span className={`font-mono text-sm ${h.pnl >= 0 ? "text-success" : "text-destructive"}`}>
-                        {formatCurrency(h.pnl)} <span className="text-xs">({formatPercent(h.pnlPercent)})</span>
-                      </span>
+                      {h.priceSource === "unavailable" ? (
+                        <span className="text-xs text-muted-foreground">—</span>
+                      ) : (
+                        <span className={`font-mono text-sm ${h.pnl >= 0 ? "text-success" : "text-destructive"}`}>
+                          {formatCurrency(h.pnl)} <span className="text-xs">({formatPercent(h.pnlPercent)})</span>
+                        </span>
+                      )}
                     </td>
                     <td className="p-4 text-right">
                       <div className="flex items-center justify-end gap-2">
@@ -221,12 +252,14 @@ export default function PortfolioPage() {
                   </div>
                   <div className="text-right">
                     <p className="text-sm font-mono font-medium text-card-foreground">
-                      {log.quantity != null ? log.quantity : "—"}{" "}
-                      <span className="text-muted-foreground">{log.symbol ?? ""}</span>
+                      {log.quantity != null && log.price != null
+                        ? formatCurrency(log.quantity * log.price + (log.actionType === "buy" ? (log.fees ?? 0) : 0))
+                        : "—"}
                     </p>
-                    {log.price != null ? (
-                      <p className="text-xs text-muted-foreground">{formatCurrency(log.price)} / unit</p>
-                    ) : null}
+                    <p className="text-xs text-muted-foreground">
+                      {log.quantity != null ? formatQuantity(log.quantity) : "—"} {log.symbol ?? ""}
+                      {log.price != null ? ` × ${formatCurrency(log.price)}` : ""}
+                    </p>
                   </div>
                 </div>
               </FadeIn>

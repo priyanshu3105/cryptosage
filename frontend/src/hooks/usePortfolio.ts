@@ -6,20 +6,78 @@ function normalizeLogId(log: PortfolioLog & { _id?: string }): PortfolioLog {
   return { ...log, id: log.id || log._id || "" };
 }
 
-type TopCoinRow = { id: string; image: string | null };
+type TopCoinRow = {
+  id: string;
+  symbol: string;
+  name: string;
+  image: string | null;
+  price: number;
+  change24h: number;
+};
 
-/** Coin id → image URL from /market/top (CoinGecko), for holdings avatars. */
-async function fetchCoinIconMap(): Promise<Map<string, string>> {
-  const map = new Map<string, string>();
+type MarketQuote = {
+  price: number;
+  change24h: number | null;
+  image?: string;
+};
+
+type PriceSource = Holding["priceSource"];
+
+function isUsablePrice(value: unknown): value is number {
+  return typeof value === "number" && Number.isFinite(value) && value > 0;
+}
+
+async function fetchMarketSnapshot(): Promise<{
+  byId: Map<string, MarketQuote>;
+  bySymbol: Map<string, MarketQuote>;
+}> {
+  const byId = new Map<string, MarketQuote>();
+  const bySymbol = new Map<string, MarketQuote>();
   try {
     const rows = await apiClient.get<TopCoinRow[]>("/market/top?limit=250");
     for (const row of rows) {
-      if (row.image) map.set(row.id, row.image);
+      if (!isUsablePrice(row.price)) continue;
+      const quote: MarketQuote = {
+        price: row.price,
+        change24h: Number.isFinite(row.change24h) ? row.change24h : null,
+        image: row.image ?? undefined,
+      };
+      byId.set(row.id, quote);
+      const symbol = (row.symbol ?? "").trim().toLowerCase();
+      if (symbol && !bySymbol.has(symbol)) bySymbol.set(symbol, quote);
     }
   } catch {
-    // offline / demo: holdings still work without icons
+    // Snapshot is optional; live + journal fallbacks still apply.
   }
-  return map;
+  return { byId, bySymbol };
+}
+
+function lastJournalPrice(coinId: string, symbol: string | null, trades: PortfolioLog[]): number | null {
+  const id = coinId.trim().toLowerCase();
+  const sym = (symbol ?? "").trim().toLowerCase();
+  for (const log of trades) {
+    if (log.actionType !== "buy" && log.actionType !== "sell") continue;
+    if (!isUsablePrice(log.price)) continue;
+    const logId = (log.coinId ?? "").trim().toLowerCase();
+    const logSym = (log.symbol ?? "").trim().toLowerCase();
+    if ((id && logId === id) || (sym && logSym === sym)) return log.price;
+  }
+  return null;
+}
+
+async function fetchLiveQuote(coinId: string): Promise<MarketQuote | null> {
+  try {
+    const price = await apiClient.get<{ price: number | null; change24h: number | null }>(
+      `/market/price/${encodeURIComponent(coinId)}`
+    );
+    if (!isUsablePrice(price.price)) return null;
+    return {
+      price: price.price,
+      change24h: price.change24h != null && Number.isFinite(price.change24h) ? price.change24h : null,
+    };
+  } catch {
+    return null;
+  }
 }
 
 export function usePortfolio() {
@@ -32,7 +90,7 @@ export function usePortfolio() {
     setIsLoading(true);
     setError(null);
     try {
-      const [portfolio, iconByCoinId] = await Promise.all([
+      const [portfolio, market, journalResult] = await Promise.all([
         apiClient.get<{
           _id: string;
           id?: string;
@@ -46,76 +104,114 @@ export function usePortfolio() {
             buyPrice: number;
           }>;
         }>("/portfolio"),
-        fetchCoinIconMap(),
+        fetchMarketSnapshot(),
+        (async () => {
+          try {
+            const qs = new URLSearchParams();
+            qs.set("page", "1");
+            qs.set("pageSize", "50");
+            qs.append("actionTypes", "buy");
+            qs.append("actionTypes", "sell");
+            const jr = await apiClient.getWithMeta<PortfolioLog[]>(`/portfolio/logs?${qs.toString()}`);
+            return Array.isArray(jr.data) ? jr.data.map((log) => normalizeLogId(log as PortfolioLog & { _id?: string })) : [];
+          } catch {
+            return [] as PortfolioLog[];
+          }
+        })(),
       ]);
+
+      const trades = journalResult;
 
       const priced = await Promise.all(
         portfolio.holdings.map(async (h) => {
-          try {
-            const price = await apiClient.get<{
-              price: number | null;
-              change24h: number | null;
-            }>(`/market/price/${h.coinId}`);
-            const currentPrice = price.price ?? 0;
-            const pct = price.change24h;
-            const deltaUsd =
-              pct != null && Number.isFinite(pct) && currentPrice > 0
-                ? h.quantity * currentPrice * (pct / 100)
-                : 0;
-            return { holding: h, currentPrice, deltaUsd };
-          } catch {
-            return { holding: h, currentPrice: 0, deltaUsd: 0 };
+          const qty = Number(h.quantity) || 0;
+          const avg = Number(h.buyPrice) || 0;
+          const symbol = h.symbol ?? null;
+          const fromTop =
+            market.byId.get(h.coinId) ??
+            (symbol ? market.bySymbol.get(symbol.toLowerCase()) : undefined);
+
+          let source: PriceSource = "unavailable";
+          let currentPrice: number | null = null;
+          let change24h: number | null = null;
+          let icon = fromTop?.image ?? market.byId.get(h.coinId)?.image;
+
+          if (fromTop) {
+            source = "market";
+            currentPrice = fromTop.price;
+            change24h = fromTop.change24h;
+            icon = fromTop.image ?? icon;
+          } else {
+            const live = await fetchLiveQuote(h.coinId);
+            if (live) {
+              source = "live";
+              currentPrice = live.price;
+              change24h = live.change24h;
+            } else {
+              const journalPx = lastJournalPrice(h.coinId, symbol, trades);
+              if (journalPx != null) {
+                source = "journal";
+                currentPrice = journalPx;
+              }
+            }
           }
+
+          const pricedOk = currentPrice != null && currentPrice > 0;
+          const value = pricedOk ? qty * currentPrice : 0;
+          const invested = qty * avg;
+          const deltaUsd =
+            pricedOk && change24h != null && Number.isFinite(change24h)
+              ? value * (change24h / 100)
+              : 0;
+
+          return {
+            holding: h,
+            qty,
+            avg,
+            currentPrice,
+            source,
+            value,
+            invested,
+            deltaUsd,
+            includeInTotals: pricedOk,
+            icon,
+          };
         })
       );
 
-      const holdingsWithPrice = priced.map((p) => ({ ...p.holding, currentPrice: p.currentPrice }));
-
-      const totalValue = holdingsWithPrice.reduce((sum, h) => sum + h.quantity * h.currentPrice, 0);
-      const totalCost = holdingsWithPrice.reduce((sum, h) => sum + h.quantity * h.buyPrice, 0);
+      const valued = priced.filter((p) => p.includeInTotals);
+      const totalValue = valued.reduce((sum, p) => sum + p.value, 0);
+      const totalCost = valued.reduce((sum, p) => sum + p.invested, 0);
       const totalPnl = totalValue - totalCost;
       const totalPnlPercent = totalCost > 0 ? (totalPnl / totalCost) * 100 : 0;
-
-      const change24h = priced.reduce((sum, p) => sum + p.deltaUsd, 0);
+      const change24h = valued.reduce((sum, p) => sum + p.deltaUsd, 0);
       const priorApprox = totalValue - change24h;
       const change24hPercent = priorApprox > 0 ? (change24h / priorApprox) * 100 : 0;
 
-      const holdings: Holding[] = holdingsWithPrice.map((h) => {
-        const value = h.quantity * h.currentPrice;
-        const invested = h.quantity * h.buyPrice;
-        const pnl = value - invested;
-        const icon = iconByCoinId.get(h.coinId);
+      const holdings: Holding[] = priced.map((p) => {
+        const live = p.currentPrice ?? 0;
+        const pnl = p.includeInTotals ? p.value - p.invested : 0;
         return {
-          id: h._id,
-          _id: h._id,
-          coinId: h.coinId,
-          symbol: h.symbol,
-          name: h.name,
-          amount: h.quantity,
-          avgBuyPrice: h.buyPrice,
-          currentPrice: h.currentPrice,
-          value,
+          id: p.holding._id,
+          _id: p.holding._id,
+          coinId: p.holding.coinId,
+          symbol: p.holding.symbol,
+          name: p.holding.name,
+          amount: p.qty,
+          avgBuyPrice: p.avg,
+          currentPrice: live,
+          value: p.includeInTotals ? p.value : 0,
+          invested: p.invested,
           pnl,
-          pnlPercent: invested > 0 ? (pnl / invested) * 100 : 0,
-          allocation: totalValue > 0 ? Number(((value / totalValue) * 100).toFixed(2)) : 0,
-          ...(icon ? { icon } : {}),
+          pnlPercent: p.includeInTotals && p.invested > 0 ? (pnl / p.invested) * 100 : 0,
+          allocation:
+            p.includeInTotals && totalValue > 0
+              ? Number(((p.value / totalValue) * 100).toFixed(2))
+              : 0,
+          priceSource: p.source,
+          ...(p.icon ? { icon: p.icon } : {}),
         };
       });
-
-      let trades: PortfolioLog[] = [];
-      try {
-        // Use repeated actionTypes so Express parses as an array (comma-separated can fail or parse oddly).
-        const qs = new URLSearchParams();
-        qs.set("page", "1");
-        qs.set("pageSize", "25");
-        qs.append("actionTypes", "buy");
-        qs.append("actionTypes", "sell");
-        const jr = await apiClient.getWithMeta<PortfolioLog[]>(`/portfolio/logs?${qs.toString()}`);
-        const rows = Array.isArray(jr.data) ? jr.data : [];
-        trades = rows.map((log) => normalizeLogId(log as PortfolioLog & { _id?: string }));
-      } catch {
-        trades = [];
-      }
 
       setSummary({
         id: portfolio.id ?? portfolio._id,
@@ -138,7 +234,9 @@ export function usePortfolio() {
     }
   }, []);
 
-  useEffect(() => { fetchPortfolio(); }, [fetchPortfolio]);
+  useEffect(() => {
+    fetchPortfolio();
+  }, [fetchPortfolio]);
 
   const addHolding = async (_data: AddHoldingRequest) => {
     await apiClient.post("/portfolio/holdings", {
